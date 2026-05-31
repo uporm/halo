@@ -1,0 +1,24 @@
+{
+  "private": true,
+  "author": "扫地僧 <horse.devops@gmail.com>",
+  "main": "main/main.js",
+  "scripts": {
+    "electron": "electron .",
+    "dev": "umi dev",
+    "build": "umi build",
+    "postinstall": "umi setup",
+    "setup": "umi setup",
+    "start": "npm run dev"
+  },
+  "dependencies": {
+    "antd": "^6.4.3",
+    "umi": "^4.6.57"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "electron": "^42.3.0",
+    "typescript": "^6.0.3"
+  },
+  "packageManager": "yarn@4.15.0+sha512.07ec708ac11e2eaa4ea2b04cfbb272812f7e74a753f1595eaef4486c663a98306a30cca3e6fc40f7a0b168dcfb3a2490b6a5e0501e20fb69cc36f563dd161c53"
+}
