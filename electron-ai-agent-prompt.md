@@ -126,12 +126,13 @@ project-root/
   yarn add @ant-design/x valtio
   yarn add -D electron-builder concurrently wait-on cross-env
 
-  # 如需把 Electron 主进程改为 TypeScript 构建，再补充主进程 tsconfig
+  # 阶段一已要求把 Electron 主进程迁移为 TypeScript，因此这里需要同步补充 electron/tsconfig.json
   ```
 - [ ] 配置 `.umirc.ts`：保留现有配置文件，在其基础上设置 `publicPath: './'`（Electron `file://` 协议需要）、`hash: true`、`history: { type: 'hash' }`，并集中维护项目路由；UI 组件直接使用 `antd` 包，不依赖额外 Umi antd 插件
-- [ ] 配置 `package.json` scripts：
+- [ ] 配置 `package.json`：修正 `main` 指向 Electron 主进程构建产物，补充 `scripts`，并为 `electron-builder` 明确声明打包文件范围：
   ```json
   {
+    "main": "electron/dist/index.js",
     "scripts": {
       "dev:renderer": "umi dev",
       "dev:main": "tsc -p electron/tsconfig.json -w",
@@ -140,6 +141,13 @@ project-root/
       "build:renderer": "umi build",
       "build:main": "tsc -p electron/tsconfig.json",
       "build": "yarn build:renderer && yarn build:main && electron-builder"
+    },
+    "build": {
+      "files": [
+        "dist/**/*",
+        "electron/dist/**/*",
+        "package.json"
+      ]
     }
   }
   ```
@@ -206,8 +214,8 @@ async function createWindow() {
     await win.loadURL('http://localhost:8000');
     win.webContents.openDevTools();
   } else {
-    // umi build 默认输出到 ./dist
-    await win.loadFile(path.join(__dirname, '../dist/index.html'));
+    // 当前入口位于 electron/dist/index.js，umi build 输出位于项目根 dist/
+    await win.loadFile(path.join(__dirname, '../../dist/index.html'));
   }
 }
 
@@ -218,6 +226,7 @@ app.whenReady().then(createWindow);
 
 ```typescript
 // electron/pi/session.ts
+import Store from "electron-store";
 import {
   AuthStorage,
   createAgentSession,
@@ -227,6 +236,8 @@ import {
   type AgentSession,
   type AgentSessionEvent,
 } from "@earendil-works/pi-coding-agent";
+
+const store = new Store<{ apiKey?: string }>();
 
 interface PiSessionOptions {
   onEvent: (event: AgentSessionEvent) => void;
@@ -568,7 +579,7 @@ node search.js "搜索关键词"
 6. **Umi 与 Electron 集成要点**：
    - 生产环境必须 `publicPath: './'` + `history: { type: 'hash' }`，否则 `file://` 加载下资源路径会 404
    - Umi 默认 dev server 为 `http://localhost:8000`，主进程 `loadURL` 与 `wait-on` 需保持一致
-   - 在 `src/typings.d.ts` 中声明 `window.electronAPI` 类型，避免渲染进程 TS 报错
+   - 复用项目根的 `typings.d.ts`，或确认自定义声明文件已被 TS 配置包含；需声明 `window.electronAPI` 类型，避免渲染进程 TS 报错
    - `umi build` 输出目录为 `dist/`，需加入 `electron-builder` 的 `files` 配置
 
 ---
@@ -577,10 +588,11 @@ node search.js "搜索关键词"
 
 Umi 会自动读取项目根的 `.env`；需要在渲染进程访问的变量请以 `UMI_APP_` 开头。
 
-```env
-# 主进程使用
-ANTHROPIC_API_KEY=sk-ant-...
+注意：
+- 当前仓库 `.gitignore` 只忽略了 `.env.local`，阶段一如果新增 `.env`，请先把 `.env` 加入 `.gitignore`
+- API Key 不通过 `.env` 注入；按上文约定，运行时从 `electron-store` 读取，再调用 `authStorage.setRuntimeApiKey()` 设置
 
-# 渲染进程使用（需 UMI_APP_ 前缀）
+```env
+# 渲染进程使用（需 UMI_APP_ 前缀，避免放入敏感信息）
 UMI_APP_NAME=AI Agent
 ```
