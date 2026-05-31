@@ -7,5 +7,6 @@
 /src/.umi-production
 /src/.umi-test
 /dist
+/electron/dist
 .swc
 .turbopack
